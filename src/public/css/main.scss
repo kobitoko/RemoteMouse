@@ -1,8 +1,6 @@
+@import "../../../node_modules/font-awesome/scss/font-awesome";
+@import "../../../node_modules/bootstrap/scss/bootstrap";
 @import "themes/default/variables";
-
-@import "lib/bootstrap/bootstrap";
-@import "lib/font-awesome/font-awesome";
-
 @import "themes/default/default";
 
 // Scaffolding
@@ -23,7 +21,8 @@ footer {
   bottom: 0;
   width: 100%;
 
-  p, ul {
+  p,
+  ul {
     margin-bottom: 0;
   }
 }

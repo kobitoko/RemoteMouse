@@ -1,4 +1,3 @@
-$(document).ready(function() {
-  // Place JavaScript code here...
-
-});
+document.addEventListener("DOMContentLoaded", async () => {
+    // Place code here...
+})
