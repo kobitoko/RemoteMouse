@@ -10,10 +10,10 @@
     "license": "MIT",
     "scripts": {
         "start": "npm run serve",
-        "build": "npm run build-sass && npm run build-ts && npm run lint && npm run copy-static-assets",
+        "build": "npm run build-sass && npm run build-ts && npm run browserify-frontend && npm run lint && npm run copy-static-assets",
         "serve": "node dist/server.js",
         "watch-node": "nodemon dist/server.js",
-        "watch": "concurrently -k -p \"[{name}]\" -n \"Sass,TypeScript,Node\" -c \"yellow.bold,cyan.bold,green.bold\" \"npm run watch-sass\" \"npm run watch-ts\" \"npm run watch-node\"",
+        "watch": "concurrently -k -p \"[{name}]\" -n \"Sass,TypeScript,Node,Watchify\" -c \"yellow.bold,cyan.bold,green.bold,blue.bold\" \"npm run watch-sass\" \"npm run watch-ts\" \"npm run watch-node\" \"npm run watchify-frontend\"",
         "test": "jest --forceExit --coverage --verbose",
         "watch-test": "npm run test -- --watchAll",
         "build-ts": "tsc",
@@ -24,7 +24,9 @@
         "copy-static-assets": "ts-node copyStaticAssets.ts",
         "debug": "npm run build && npm run watch-debug",
         "serve-debug": "nodemon --inspect dist/server.js",
-        "watch-debug": "concurrently -k -p \"[{name}]\" -n \"Sass,TypeScript,Node\" -c \"yellow.bold,cyan.bold,green.bold\" \"npm run watch-sass\" \"npm run watch-ts\" \"npm run serve-debug\""
+        "watch-debug": "concurrently -k -p \"[{name}]\" -n \"Sass,TypeScript,Node\" -c \"yellow.bold,cyan.bold,green.bold\" \"npm run watch-sass\" \"npm run watch-ts\" \"npm run serve-debug\"",
+        "browserify-frontend": "browserify dist/public/js/main.js -o dist/public/js/bundle.js",
+        "watchify-frontend": "watchify dist/public/js/main.js -o dist/public/js/bundle.js"
     },
     "dependencies": {
         "async": "^3.1.0",
@@ -64,8 +66,9 @@
         "@types/shelljs": "^0.8.5",
         "@types/supertest": "^2.0.8",
         "@types/winston": "^2.4.4",
-        "@typescript-eslint/eslint-plugin": "^2.3.1",
-        "@typescript-eslint/parser": "^2.3.1",
+        "@typescript-eslint/eslint-plugin": "^2.34.0",
+        "@typescript-eslint/parser": "^2.34.0",
+        "browserify": "^16.5.1",
         "chai": "^4.2.0",
         "concurrently": "^5.0.0",
         "eslint": "^6.4.0",
@@ -74,8 +77,9 @@
         "nodemon": "^1.19.2",
         "shelljs": "^0.8.3",
         "supertest": "^4.0.2",
-        "ts-jest": "^24.1.0",
-        "ts-node": "^8.4.1",
-        "typescript": "^3.6.3"
+        "ts-jest": "^24.3.0",
+        "ts-node": "^8.10.2",
+        "typescript": "^3.9.5",
+        "watchify": "^3.11.1"
     }
 }
