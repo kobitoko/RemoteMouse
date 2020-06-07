@@ -2,11 +2,13 @@ extends layout
 
 block content
   .row
-    .col-sm-6
+    .col-xl-auto
       span#status Hello!
-      a.btn.btn-primary(href='#host_client', role='button')#start-client Start Client
-      a.btn.btn-primary(href='#host_start', role='button')#start-host Start Host
-      a.btn.btn-secondary(href='#stop', role='button')#stop Stop
-      input.form-control(type='text', name='ip', id='ip', placeholder='127.0.0.1:3000', autofocus, required)
+      a.btn.btn-primary(href='#', role='button')#start-client Start Client
+      a.btn.btn-primary(href='#', role='button')#start-host Start Host
+      a.btn.btn-secondary(href='#', role='button')#stop Stop
+      input.form-control(type='password', name='password', id='password', placeholder='password', autofocus, required)
+      input.form-control(type='text', name='ip', id='ip', placeholder='127.0.0.1:3000')
 block media
-  video#video
+  div#video-container
+    video#video

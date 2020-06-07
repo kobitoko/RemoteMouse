@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
 import robot from "robotjs";
+
 /**
  * GET /
  * Home page.
  */
 export const index = async (req: Request, res: Response) => {
-    
     console.log("hi");
     // Get mouse position.
     const mouse = robot.getMousePos();

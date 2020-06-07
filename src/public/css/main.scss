@@ -66,7 +66,7 @@ textarea {
 }
 
 #video {
-  margin-top: 1em;
+  margin-top: 0.5em;
   margin-left: 0;
   width: 100%;
   background-color: lightgray;
@@ -76,7 +76,7 @@ textarea {
   margin-right: 1em;
 }
 
-#ip {
+#ip, #password {
   display: inline;
   width: 10em;
   vertical-align: middle;
