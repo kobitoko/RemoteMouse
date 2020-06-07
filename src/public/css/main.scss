@@ -12,8 +12,7 @@ html {
 }
 
 body {
-  padding-top: 80px;
-  margin-bottom: 75px;
+  padding-top: 0.5em;
 }
 
 footer {
@@ -64,4 +63,21 @@ textarea {
 
 .fa {
   margin-right: 6px;
+}
+
+#video {
+  margin-top: 1em;
+  margin-left: 0;
+  width: 100%;
+  background-color: lightgray;
+}
+
+#status {
+  margin-right: 1em;
+}
+
+#ip {
+  display: inline;
+  width: 10em;
+  vertical-align: middle;
 }

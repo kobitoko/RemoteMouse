@@ -1,15 +1,16 @@
+# Remote Mouse Control
+
+
+
+Build ontop of TypeScript Node Starter taken from https://github.com/Microsoft/TypeScript-Node-Starter
+
+<details><summary>TypeScript Node Starter Readme</summary>
+
 # TypeScript Node Starter
 
 The main purpose of this repository is to show a working Node.js API Server + front-end project and workflow for writing Node code in TypeScript.
 
 It is not a goal to be a comprehensive and definitive guide to making a TypeScript and Node project, but as a working reference maintained by the community. If you are interested in starting a new TypeScript project - check out the bootstrapping tools reference in [the TypeScript Website](https://www.typescriptlang.org/docs/home.html)
-
-
-[![Dependency Status](https://david-dm.org/Microsoft/TypeScript-Node-Starter.svg)](https://david-dm.org/Microsoft/TypeScript-Node-Starter) [![Build Status](https://travis-ci.org/Microsoft/TypeScript-Node-Starter.svg?branch=master)](https://travis-ci.org/Microsoft/TypeScript-Node-Starter)
-
-**Live Demo**: [https://typescript-node-starter.azurewebsites.net/](https://typescript-node-starter.azurewebsites.net/)
-
-![image](https://user-images.githubusercontent.com/820883/36764267-abbdb7f8-1be0-11e8-9678-2a9ea448d7f8.png)
 
 
 # Table of contents:
@@ -557,3 +558,4 @@ A majority of this quick start's content was inspired or adapted from Sahat's ex
 ## License
 Copyright (c) Microsoft Corporation. All rights reserved.
 Licensed under the [MIT](LICENSE.txt) License.
+</details>

@@ -1,0 +1,12 @@
+extends layout
+
+block content
+  .row
+    .col-sm-6
+      span#status Hello!
+      a.btn.btn-primary(href='#host_client', role='button')#start-client Start Client
+      a.btn.btn-primary(href='#host_start', role='button')#start-host Start Host
+      a.btn.btn-secondary(href='#stop', role='button')#stop Stop
+      input.form-control(type='text', name='ip', id='ip', placeholder='127.0.0.1:3000', autofocus, required)
+block media
+  video#video
