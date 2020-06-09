@@ -29,6 +29,7 @@
         "watchify-frontend": "watchify dist/public/js/main.js -o dist/public/js/bundle.js"
     },
     "dependencies": {
+        "@types/simple-peer": "^9.6.0",
         "@types/socket.io": "^2.1.8",
         "@types/socket.io-client": "^1.4.33",
         "async": "^3.2.0",
@@ -45,6 +46,7 @@
         "lodash": "^4.17.15",
         "pug": "^2.0.4",
         "robotjs": "^0.6.0",
+        "simple-peer": "^9.7.2",
         "socket.io": "^2.3.0",
         "socket.io-client": "^2.3.0",
         "winston": "^3.2.1"
