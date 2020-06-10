@@ -10,10 +10,17 @@ import { SocketEvents, PeerEvents } from "./constants";
  */
 app.use(errorHandler());
 
+// TODO: Rewrite all this: 
+// CONNECT both via socket immediately, then when one clicks host, this will remember, but won't tell host to start rtc until it detects client
+// when one clicks client, server will remember and wait for a host.
+// When both present, this sends host to start rtc and begin communicating to client.
+// This will pass signals between host/client until they connect.
+
 class Server {
     public server: http.Server = null;
     public io: socketIO.Server = null;
-    private peerData: string = null;
+    private peerData: string[] = [];
+    private host: socketIO.Socket = null;
 
     constructor() {
         // Express and socketio will run on the same port. Http is the intermediary.
@@ -35,28 +42,28 @@ class Server {
         console.log("A user connected:", socket.id);
         socket.on(SocketEvents.disconnect, this.handleDisconnect.bind(this));
         socket.on(SocketEvents.message, this.handleMessage.bind(this));
-        socket.on(SocketEvents.setPeerData, this.setPeerData.bind(this));
-        socket.on(SocketEvents.setPeerTrickleICE, this.setPeerTrickleICE.bind(this));
+        socket.on(SocketEvents.setPeerData, (data:string) => this.setPeerData(data, socket));
         socket.on(SocketEvents.getPeerData, this.getPeerData.bind(this, socket));
+        socket.on(SocketEvents.replyPeerData,  this.replyPeerData.bind(this));
     }
 
     private handleDisconnect(socket: socketIO.Socket) {
-        console.log("A user disconnected");
+        console.log("A user disconnected:", socket.id);
     }
 
-    private setPeerData(dataString: string) {
-        this.peerData = dataString;
-    }
-
-    private setPeerTrickleICE(dataString: string) {
-        this.io.sockets.emit(SocketEvents.peerUpdatedICECandidate, dataString);
+    private setPeerData(dataString: string, socket: socketIO.Socket) {
+        this.peerData.push(dataString);
+        this.host = socket;
     }
 
     //TODO: figure out how to enable webrtc on local network https://stackoverflow.com/questions/32171367/webrtc-on-local-network
 
     private getPeerData(sender: socketIO.Socket) {
-        console.log("socketid:",sender.id)
-        sender.emit(SocketEvents.getPeerData, this.peerData);
+        sender.emit(SocketEvents.getPeerData, JSON.stringify(this.peerData));
+    }
+
+    private replyPeerData(dataString:string) {
+        this.host.emit(SocketEvents.replyPeerData,dataString);
     }
 
     private handleMessage(msg: any) {

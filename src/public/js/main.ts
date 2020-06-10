@@ -9,9 +9,10 @@ type DisplayMediaOptions = {
 
 class RemoteMouse {
     public displayMediaOptions: DisplayMediaOptions = null;
+    public peer: SimplePeer.Instance = null;
     private captureStream: MediaStream = null;
     private socket: SocketIOClient.Socket = null;
-    public peer: SimplePeer.Instance = null;
+    private peerInitiatorData: string[] = [];
 
     constructor(displayMediaOptions?: DisplayMediaOptions) {
         this.displayMediaOptions = displayMediaOptions
@@ -23,6 +24,29 @@ class RemoteMouse {
                   audio: false,
               };
         console.log("Constructed!");
+
+        var peer1 = new SimplePeer({ initiator: true })
+        var peer2 = new SimplePeer()
+
+        peer1.on('signal', data => {
+        // when peer1 has signaling data, give it to peer2 somehow
+        peer2.signal(data)
+        })
+
+        peer2.on('signal', data => {
+        // when peer2 has signaling data, give it to peer1 somehow
+        peer1.signal(data)
+        })
+
+        peer1.on('connect', () => {
+        // wait for 'connect' event before using the data channel
+        peer1.send('hey peer2, how is it going?')
+        })
+
+        peer2.on('data', data => {
+        // got a data channel message
+        console.log('got a message from peer1: ' + data)
+        })
     }
 
     public handleMouseMoved(e: MouseEvent) {
@@ -55,17 +79,14 @@ class RemoteMouse {
             console.log("data: " + data);
         });
         if (isHost) {
-            peer.once(PeerEvents.signal, (data) => {
+            peer.on(PeerEvents.signal, (data) => {
                 console.log("Sending signal:\n", data);
                 this.socket.emit(SocketEvents.setPeerData, JSON.stringify(data));
-                peer.on(PeerEvents.signal, (data) => {
-                    console.log("Sending trickle:\n", data);
-                    this.socket.emit(SocketEvents.setPeerTrickleICE, JSON.stringify(data));
-                });
             });
         } else {
             peer.on(PeerEvents.signal, (data) => {
                 console.log("Received peerdata:\n", data);
+                this.socket.emit(SocketEvents.replyPeerData, JSON.stringify(data));
             });
             peer.on(PeerEvents.stream, this.receiveStream.bind(this));
         }
@@ -100,11 +121,21 @@ class RemoteMouse {
             initiator: false,
             trickle: true
         });
-        this.socket.on(SocketEvents.getPeerData, (data:string) => this.peer.signal(JSON.parse(data)))
+        this.socket.on(SocketEvents.getPeerData, this.receivePeerData.bind(this))
         this.addPeerListeners(this.peer, false);
-        this.socket.on(SocketEvents.peerUpdatedICECandidate, (data:string) => {console.log("updated ice", data);this.peer.signal(JSON.parse(data))});
         // Ready to receive peer data.
         this.socket.emit(SocketEvents.getPeerData);
+    }
+
+    private async receivePeerData(data :string) {
+        const newData: string[] = JSON.parse(data);
+        const newUniqueData: string[] = newData.filter(data => !this.peerInitiatorData.includes(data));
+        if (newUniqueData.length > 0) {
+            this.peerInitiatorData.push(...newUniqueData);
+        }
+        for(const candidate of newUniqueData) {
+            this.peer.signal(candidate);
+        }
     }
 
     private async receiveStream(stream:MediaStream):Promise<void> {

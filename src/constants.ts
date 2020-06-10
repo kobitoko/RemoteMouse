@@ -6,7 +6,8 @@ export enum SocketEvents {
     setPeerData = "setPeerData",
     setPeerTrickleICE = "setPeerTrickleICE",
     peerUpdatedICECandidate = "peerUpdatedICECandidate",
-    getPeerData = "getPeerData"
+    getPeerData = "getPeerData",
+    replyPeerData = "replyPeerData"
 }
 
 export enum PeerEvents {
