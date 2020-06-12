@@ -4,11 +4,11 @@ block content
   .row
     .col-xl-auto
       span#status Hello!
-      a.btn.btn-primary(href='#', role='button')#start-client Start Client
-      a.btn.btn-primary(href='#', role='button')#start-host Start Host
-      a.btn.btn-secondary(href='#', role='button')#stop Stop
-      input.form-control(type='password', name='password', id='password', placeholder='password', autofocus, required)
-      input.form-control(type='text', name='ip', id='ip', placeholder='127.0.0.1:3000')
+      a.btn.btn-primary(href='#', role='button')#start-client.disabled Start Client
+      a.btn.btn-primary(href='#', role='button')#start-host.disabled Start Host
+      a.btn.btn-secondary(href='#', role='button')#stop.disabled Stop
+      input.form-control(type='text', name='ip', id='ip', value='http://localhost:3000', placeholder='URL to server')
+      a.btn.btn-primary(href='#', role='button')#connect Connect
 block media
   div#video-container
     video#video

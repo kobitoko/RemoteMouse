@@ -7,12 +7,24 @@ type DisplayMediaOptions = {
     audio: boolean;
 };
 
+enum Role {
+    none = "none",
+    host = "host",
+    client = "client"
+}
+
 class RemoteMouse {
+    private socket: SocketIOClient.Socket = null;
+    private connectBtn: HTMLElement = null;
+    private connectField: HTMLInputElement = null;
+    private hostBtn: HTMLElement = null;
+    private clientBtn: HTMLElement = null;
+    private stopBtn: HTMLElement = null;
+    private role: Role = Role.none;
+
     public displayMediaOptions: DisplayMediaOptions = null;
     public peer: SimplePeer.Instance = null;
     private captureStream: MediaStream = null;
-    private socket: SocketIOClient.Socket = null;
-    private peerInitiatorData: string[] = [];
 
     constructor(displayMediaOptions?: DisplayMediaOptions) {
         this.displayMediaOptions = displayMediaOptions
@@ -23,30 +35,122 @@ class RemoteMouse {
                   },
                   audio: false,
               };
-        console.log("Constructed!");
+        this.hostBtn = document.getElementById("start-host");
+        this.clientBtn = document.getElementById("start-client");
+        this.stopBtn = document.getElementById("stop");
+        this.connectBtn = document.getElementById("connect");
+        this.connectField = document.getElementById("ip") as HTMLInputElement;
+        this.connectBtn.addEventListener("click", this.handleConnect.bind(this));
+    }
 
-        var peer1 = new SimplePeer({ initiator: true })
-        var peer2 = new SimplePeer()
+    private handleConnect(event: MouseEvent) {
+        event.preventDefault();
+        this.connectBtn.classList.add("disabled");
+        this.connectField.setAttribute("disabled", "true");
+        this.socket = SocketIOClient(`${this.connectField.value}`);
+        this.socket.once(SocketEvents.message, this.firstSocketContact.bind(this));
+        this.socket.on(SocketEvents.error, this.handleError.bind(this));
+        this.socket.on(SocketEvents.disconnect, () => this.handleError("disconnected."));
+        this.socket.send("Hello!");
+        // Re-enable connect buttons when there's still no connection after 3s.
+        setTimeout(() => {
+            if (!this.socket.connected) {
+                alert(`Failed to connect to ${this.connectField.value}`);
+                this.socket.removeAllListeners();
+                this.socket = null;
+                this.connectBtn.classList.remove("disabled");
+                this.connectField.removeAttribute("disabled");
+            }
+        }, 3000);
+    }
 
-        peer1.on('signal', data => {
-        // when peer1 has signaling data, give it to peer2 somehow
-        peer2.signal(data)
-        })
+    private firstSocketContact(msg: string) {
+        console.log("Server:", msg);
+        // Enable client/host buttons.
+        this.hostBtn.classList.remove("disabled");
+        this.clientBtn.classList.remove("disabled");
+        this.socket.on(SocketEvents.clientHostExists, this.startPeer.bind(this));
+    }
 
-        peer2.on('signal', data => {
-        // when peer2 has signaling data, give it to peer1 somehow
-        peer1.signal(data)
-        })
+    private handleError(error: any) {
+        console.error("Socket error", error);
+        alert(`Refreshing! Socket error: ${error}`)
+        this.stopCapture();
+        window.location.reload();
+    }
 
-        peer1.on('connect', () => {
-        // wait for 'connect' event before using the data channel
-        peer1.send('hey peer2, how is it going?')
-        })
+    // Sends stream, receives coordinates from mouse.
+    public async startHost(): Promise<void> {
+        try {
+            // navigator.mediaDevices is missing getDisplayMedia: https://github.com/microsoft/TypeScript/issues/33232
+            // @ts-ignore
+            this.captureStream = await navigator.mediaDevices.getDisplayMedia(this.displayMediaOptions);
+        } catch (err) {
+            console.error("Error: " + err);
+        }
+        this.role = Role.host;
+        this.socket.emit(SocketEvents.becomeHost);
+    }
 
-        peer2.on('data', data => {
-        // got a data channel message
-        console.log('got a message from peer1: ' + data)
-        })
+    // Receives stream, sends out coordinates from mouse.
+    public async startClient(): Promise<void> {
+        this.role = Role.client;
+        this.socket.emit(SocketEvents.becomeClient);
+    }
+
+    private startPeer() {
+        if (this.role === Role.none) {
+            console.error("Role of NONE, but received a clientHostExists event?");
+            return;
+        }
+        const isHost: boolean = this.role === Role.host;
+        this.peer = new SimplePeer({
+            initiator: isHost ? true : false,
+            trickle: true,
+            stream: isHost ? this.captureStream : null,
+        });
+        this.addPeerListeners(this.peer);
+        this.socket.on(SocketEvents.message, this.processSignal.bind(this));
+        console.log("Ready for peer.");
+        this.stopBtn.classList.remove("disabled");
+    }
+
+    private addPeerListeners(peer: SimplePeer.Instance) {
+        peer.on(PeerEvents.connect, () => {
+            console.log("CONNECT");
+            peer.send("whatever" + Math.random());
+        });
+        peer.on(PeerEvents.error, (err) => console.error("Peer error", err));
+        peer.on(PeerEvents.data, (data) => {
+            console.log("data: " + data);
+        });
+        peer.on(PeerEvents.signal, (data) => {
+            console.log(`Sending signal to ${this.role}:\n`, data);
+            const receiver: SocketEvents = this.role === Role.host ? SocketEvents.messageClient : SocketEvents.messageHost;
+            this.socket.emit(receiver, JSON.stringify(data));
+        });
+        if (this.role === Role.client) {
+            peer.on(PeerEvents.stream, this.receiveStream.bind(this));
+        }
+    }
+
+    private processSignal(data: string) {
+        this.peer.signal(JSON.parse(data));
+    }
+
+    private async receiveStream(stream: MediaStream): Promise<void> {
+        const videoElem: HTMLVideoElement = document.getElementById("video") as HTMLVideoElement;
+        if (videoElem.srcObject) {
+            console.log("scrObj has video??");
+            return;
+        }
+        videoElem.srcObject = stream;
+        await videoElem.play();
+        videoElem.addEventListener("mousemove", this.handleMouseMoved);
+        videoElem.addEventListener("mousedown", this.handleMouseDown);
+        videoElem.addEventListener("mouseup", this.handleMouseUp);
+        // Fullscreen the container, if the ratio doesn't fit the video's height, the video element's height still matches the video source
+        document.getElementById("video-container").requestFullscreen();
     }
 
     public handleMouseMoved(e: MouseEvent) {
@@ -69,97 +173,19 @@ class RemoteMouse {
         console.log("Mouse up", e.offsetX, e.offsetY);
     }
 
-    private addPeerListeners(peer: SimplePeer.Instance, isHost: boolean) {
-        peer.on(PeerEvents.connect, () => {
-            console.log("CONNECT");
-            peer.send("whatever" + Math.random());
-        });
-        peer.on(PeerEvents.error, (err) => console.error("Peer error", err));
-        peer.on(PeerEvents.data, (data) => {
-            console.log("data: " + data);
-        });
-        if (isHost) {
-            peer.on(PeerEvents.signal, (data) => {
-                console.log("Sending signal:\n", data);
-                this.socket.emit(SocketEvents.setPeerData, JSON.stringify(data));
-            });
-        } else {
-            peer.on(PeerEvents.signal, (data) => {
-                console.log("Received peerdata:\n", data);
-                this.socket.emit(SocketEvents.replyPeerData, JSON.stringify(data));
-            });
-            peer.on(PeerEvents.stream, this.receiveStream.bind(this));
-        }
-    }
-
-    // Sends stream, receives coordinates from mouse.
-    public async startHost(): Promise<void> {
-        try {
-            // navigator.mediaDevices is missing getDisplayMedia: https://github.com/microsoft/TypeScript/issues/33232
-            // @ts-ignore
-            this.captureStream = await navigator.mediaDevices.getDisplayMedia(this.displayMediaOptions);
-        } catch (err) {
-            console.error("Error: " + err);
-        }
-        // TODO: send stream to client.
-        this.socket = SocketIOClient("http://localhost:3000");
-        this.socket.send("Hello, host here!");
-        // TODO: WebRTC send stream.
-        this.peer = new SimplePeer({
-            initiator: true,
-            trickle: true,
-            stream: this.captureStream
-        });
-        this.addPeerListeners(this.peer, true);
-    }
-
-    // Receives stream, sends out coordinates from mouse.
-    public async startClient(): Promise<void> {
-        this.socket = SocketIOClient("http://localhost:3000");
-        this.socket.send("Hello, client here!");
-        this.peer = new SimplePeer({
-            initiator: false,
-            trickle: true
-        });
-        this.socket.on(SocketEvents.getPeerData, this.receivePeerData.bind(this))
-        this.addPeerListeners(this.peer, false);
-        // Ready to receive peer data.
-        this.socket.emit(SocketEvents.getPeerData);
-    }
-
-    private async receivePeerData(data :string) {
-        const newData: string[] = JSON.parse(data);
-        const newUniqueData: string[] = newData.filter(data => !this.peerInitiatorData.includes(data));
-        if (newUniqueData.length > 0) {
-            this.peerInitiatorData.push(...newUniqueData);
-        }
-        for(const candidate of newUniqueData) {
-            this.peer.signal(candidate);
-        }
-    }
-
-    private async receiveStream(stream:MediaStream):Promise<void> {
-        const videoElem: HTMLVideoElement = document.getElementById("video") as HTMLVideoElement;
-        if (videoElem.srcObject) {
-            console.log("scrObj has video??")
-            return;
-        }
-        videoElem.srcObject = stream;
-        await videoElem.play();
-        videoElem.addEventListener("mousemove", this.handleMouseMoved);
-        videoElem.addEventListener("mousedown", this.handleMouseDown);
-        videoElem.addEventListener("mouseup", this.handleMouseUp);
-        // Fullscreen the container, if the ratio doesn't fit the video's height, the video element's height still matches the video source
-        document.getElementById("video-container").requestFullscreen();
-    }
-
     public stopCapture(): void {
         const videoElem: HTMLVideoElement = document.getElementById("video") as HTMLVideoElement;
         videoElem.removeEventListener("mousemove", this.handleMouseMoved);
         videoElem.removeEventListener("mousedown", this.handleMouseDown);
         videoElem.removeEventListener("mouseup", this.handleMouseUp);
-        this.socket.disconnect();
-        if (!!videoElem.srcObject) {
+        this.role = Role.none;
+        if (this.peer) {
+            this.peer.destroy();
+        }
+        if (this.socket) {
+            this.socket.disconnect();
+        }
+        if (videoElem.srcObject) {
             const tracks = (videoElem.srcObject as MediaStream).getTracks();
             tracks.forEach((track) => track.stop());
             videoElem.srcObject = null;
@@ -167,7 +193,9 @@ class RemoteMouse {
     }
 }
 declare global {
-    interface Window { app: RemoteMouse}
+    interface Window {
+        app: RemoteMouse;
+    }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {

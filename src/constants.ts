@@ -1,13 +1,14 @@
 export enum SocketEvents {
+    connection = "connection", // Server only
     connect = "connect",
     disconnect = "disconnect",
     error = "error",
     message = "message",
-    setPeerData = "setPeerData",
-    setPeerTrickleICE = "setPeerTrickleICE",
-    peerUpdatedICECandidate = "peerUpdatedICECandidate",
-    getPeerData = "getPeerData",
-    replyPeerData = "replyPeerData"
+    becomeHost = "becomeHost",
+    becomeClient = "becomeClient",
+    clientHostExists = "clientHostExists",
+    messageHost = "messageHost",
+    messageClient = "messageClient"
 }
 
 export enum PeerEvents {
