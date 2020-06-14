@@ -1,6 +1,6 @@
 import SocketIOClient from "socket.io-client";
 import SimplePeer from "simple-peer";
-import { SocketEvents, PeerEvents } from "../../constants";
+import { SocketEvents, PeerEvents, InputData, InputTypes } from "../../constants";
 
 type DisplayMediaOptions = {
     video: { cursor: string };
@@ -10,7 +10,7 @@ type DisplayMediaOptions = {
 enum Role {
     none = "none",
     host = "host",
-    client = "client"
+    client = "client",
 }
 
 class RemoteMouse {
@@ -41,6 +41,7 @@ class RemoteMouse {
         this.connectBtn = document.getElementById("connect");
         this.connectField = document.getElementById("ip") as HTMLInputElement;
         this.connectBtn.addEventListener("click", this.handleConnect.bind(this));
+        this.connectField.value = window.location.href;
     }
 
     private handleConnect(event: MouseEvent) {
@@ -74,7 +75,7 @@ class RemoteMouse {
 
     private handleError(error: any) {
         console.error("Socket error", error);
-        alert(`Refreshing! Socket error: ${error}`)
+        alert(`Refreshing! Socket error: ${error}`);
         this.stopCapture();
         window.location.reload();
     }
@@ -90,12 +91,16 @@ class RemoteMouse {
         }
         this.role = Role.host;
         this.socket.emit(SocketEvents.becomeHost);
+        this.hostBtn.classList.add("disabled");
+        this.clientBtn.classList.add("disabled");
     }
 
     // Receives stream, sends out coordinates from mouse.
     public async startClient(): Promise<void> {
         this.role = Role.client;
         this.socket.emit(SocketEvents.becomeClient);
+        this.hostBtn.classList.add("disabled");
+        this.clientBtn.classList.add("disabled");
     }
 
     private startPeer() {
@@ -111,19 +116,17 @@ class RemoteMouse {
         });
         this.addPeerListeners(this.peer);
         this.socket.on(SocketEvents.message, this.processSignal.bind(this));
-        console.log("Ready for peer.");
         this.stopBtn.classList.remove("disabled");
+        this.hostBtn.classList.add("disabled");
+        this.clientBtn.classList.add("disabled");
+        console.log("Ready for peer.");
     }
 
     private addPeerListeners(peer: SimplePeer.Instance) {
         peer.on(PeerEvents.connect, () => {
-            console.log("CONNECT");
-            peer.send("whatever" + Math.random());
+            console.log("Connected to peer.");
         });
         peer.on(PeerEvents.error, (err) => console.error("Peer error", err));
-        peer.on(PeerEvents.data, (data) => {
-            console.log("data: " + data);
-        });
         peer.on(PeerEvents.signal, (data) => {
             console.log(`Sending signal to ${this.role}:\n`, data);
             const receiver: SocketEvents = this.role === Role.host ? SocketEvents.messageClient : SocketEvents.messageHost;
@@ -146,31 +149,32 @@ class RemoteMouse {
         }
         videoElem.srcObject = stream;
         await videoElem.play();
-        videoElem.addEventListener("mousemove", this.handleMouseMoved);
-        videoElem.addEventListener("mousedown", this.handleMouseDown);
-        videoElem.addEventListener("mouseup", this.handleMouseUp);
+        videoElem.addEventListener("mousemove", this.handleMouseMoved.bind(this));
+        videoElem.addEventListener("mousedown", this.handleMouseDown.bind(this));
+        videoElem.addEventListener("mouseup", this.handleMouseUp.bind(this));
         // Fullscreen the container, if the ratio doesn't fit the video's height, the video element's height still matches the video source
         document.getElementById("video-container").requestFullscreen();
     }
 
     public handleMouseMoved(e: MouseEvent) {
-        console.log(
-            "Mouse move",
-            e.offsetX,
-            e.offsetY,
-            (e.target as HTMLElement).clientWidth,
-            (e.target as HTMLElement).clientHeight,
-            e.offsetX / (e.target as HTMLElement).clientWidth,
-            e.offsetY / (e.target as HTMLElement).clientHeight
-        );
+        const mPercentX: number = e.offsetX / (e.target as HTMLElement).clientWidth;
+        const mPercentY: number = e.offsetY / (e.target as HTMLElement).clientHeight;
+        const data: InputData = { type: InputTypes.mouseMove, x: mPercentX, y: mPercentY };
+        this.socket.emit(SocketEvents.serverData, JSON.stringify(data));
     }
 
     public handleMouseDown(e: MouseEvent) {
-        console.log("Mouse down", e.offsetX, e.offsetY);
+        const mPercentX: number = e.offsetX / (e.target as HTMLElement).clientWidth;
+        const mPercentY: number = e.offsetY / (e.target as HTMLElement).clientHeight;
+        const data: InputData = { type: InputTypes.mouseDown, x: mPercentX, y: mPercentY };
+        this.socket.emit(SocketEvents.serverData, JSON.stringify(data));
     }
 
     public handleMouseUp(e: MouseEvent) {
-        console.log("Mouse up", e.offsetX, e.offsetY);
+        const mPercentX: number = e.offsetX / (e.target as HTMLElement).clientWidth;
+        const mPercentY: number = e.offsetY / (e.target as HTMLElement).clientHeight;
+        const data: InputData = { type: InputTypes.mouseUp, x: mPercentX, y: mPercentY };
+        this.socket.emit(SocketEvents.serverData, JSON.stringify(data));
     }
 
     public stopCapture(): void {

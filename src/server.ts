@@ -3,8 +3,8 @@ import http from "http";
 import socketIO from "socket.io";
 
 import app from "./app";
-import { SocketEvents, PeerEvents } from "./constants";
-import { EventEmitter } from "events";
+import { SocketEvents, InputData, InputTypes } from './constants';
+import robot from "robotjs";
 
 /**
  * Error Handler. Provides full stack - remove for production
@@ -26,6 +26,7 @@ class Server {
     private host: socketIO.Socket = null;
     private client: socketIO.Socket = null;
     private connections: socketIO.Socket[] = [];
+    private mouseIsDown: boolean = false;
 
     constructor() {
         // Express and socketio will run on the same port. Http is the intermediary.
@@ -34,7 +35,7 @@ class Server {
         this.io.on(SocketEvents.connection, this.addSocketListeners.bind(this));
         this.io.on(SocketEvents.error, (e:any) => console.error("Error:",e))
         // Start Express server.
-        this.server.listen(app.get("port"), () => {
+        this.server.listen(app.get("port"), "0.0.0.0", () => {
             console.log(
                 "  App is running at http://localhost:%d in %s mode",
                 app.get("port"),
@@ -52,6 +53,7 @@ class Server {
         socket.on(SocketEvents.becomeHost, this.becomeHost.bind(this, socket));
         socket.on(SocketEvents.messageClient, (data: string) => this.messageClient(data, socket));
         socket.on(SocketEvents.messageHost, (data: string) => this.messageHost(data, socket));
+        socket.on(SocketEvents.serverData, (data: string) => this.serverData(data));
         this.connections.push(socket);
     }
 
@@ -136,6 +138,29 @@ class Server {
     private handleMessage(msg: string, socket: socketIO.Socket) {
         console.log(`User ${socket.id} says: ${msg}`);
         socket.emit(SocketEvents.message, "Hello!");
+    }
+
+    private serverData(data: string) {
+        const inputData: InputData = JSON.parse(data);
+        const screenSize = robot.getScreenSize();
+        switch(inputData.type) {
+            case InputTypes.mouseMove:
+                if (this.mouseIsDown) {
+                    robot.dragMouse(inputData.x * screenSize.width, inputData.y * screenSize.height);
+                } else {
+                    robot.moveMouse(inputData.x * screenSize.width, inputData.y * screenSize.height);
+                }
+                break;
+            case InputTypes.mouseDown:
+                robot.mouseToggle("down");
+                this.mouseIsDown = true;
+                break;
+            case InputTypes.mouseUp:
+                robot.mouseToggle("up");
+                this.mouseIsDown = false;
+                break;
+                
+        }
     }
 }
 

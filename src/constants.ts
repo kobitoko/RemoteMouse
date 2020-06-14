@@ -8,7 +8,8 @@ export enum SocketEvents {
     becomeClient = "becomeClient",
     clientHostExists = "clientHostExists",
     messageHost = "messageHost",
-    messageClient = "messageClient"
+    messageClient = "messageClient",
+    serverData = "serverData"
 }
 
 export enum PeerEvents {
@@ -17,4 +18,17 @@ export enum PeerEvents {
     error = "error",
     stream = "stream",
     data = "data"
+}
+
+export enum InputTypes {
+    mouseDown = "mouseDown",
+    mouseUp = "mouseUp",
+    mouseMove = "mouseMove"
+}
+
+export type InputData = {
+    type: InputTypes,
+    x?: number,
+    y?: number,
+    data?: any
 }
