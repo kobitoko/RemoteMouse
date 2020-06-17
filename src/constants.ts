@@ -28,7 +28,8 @@ export enum InputTypes {
 
 export type InputData = {
     type: InputTypes,
-    x?: number,
-    y?: number,
+    x: number,
+    y: number,
+    lMouseDown: boolean
     data?: any
 }

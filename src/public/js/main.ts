@@ -25,6 +25,11 @@ class RemoteMouse {
     public displayMediaOptions: DisplayMediaOptions = null;
     public peer: SimplePeer.Instance = null;
     private captureStream: MediaStream = null;
+    private mouseDown: boolean = false;
+    private lastMouseMove: InputData = null;
+    private mouseData: string = null;
+    private tickRate: number = 1000/30;
+    private ticker: NodeJS.Timeout = null;
 
     constructor(displayMediaOptions?: DisplayMediaOptions) {
         this.displayMediaOptions = displayMediaOptions
@@ -144,7 +149,6 @@ class RemoteMouse {
     private async receiveStream(stream: MediaStream): Promise<void> {
         const videoElem: HTMLVideoElement = document.getElementById("video") as HTMLVideoElement;
         if (videoElem.srcObject) {
-            console.log("scrObj has video??");
             return;
         }
         videoElem.srcObject = stream;
@@ -157,27 +161,43 @@ class RemoteMouse {
     }
 
     public handleMouseMoved(e: MouseEvent) {
+        const newInput: InputData = {x: e.offsetX, y: e.offsetY, lMouseDown: this.mouseDown} as InputData;
+        if (this.lastMouseMove && this.lastMouseMove === newInput) {
+            return;
+        }
+        this.lastMouseMove = newInput;
         const mPercentX: number = e.offsetX / (e.target as HTMLElement).clientWidth;
         const mPercentY: number = e.offsetY / (e.target as HTMLElement).clientHeight;
-        const data: InputData = { type: InputTypes.mouseMove, x: mPercentX, y: mPercentY };
-        this.socket.emit(SocketEvents.serverData, JSON.stringify(data));
+        const data: InputData = { type: InputTypes.mouseMove, x: mPercentX, y: mPercentY, lMouseDown: this.mouseDown };
+        // We only care about the latest up-to-date data.
+        this.mouseData = JSON.stringify(data);
+        if (!this.ticker) {
+            this.ticker = setTimeout(this.handleTick.bind(this), this.tickRate);
+        }
     }
 
     public handleMouseDown(e: MouseEvent) {
-        const mPercentX: number = e.offsetX / (e.target as HTMLElement).clientWidth;
-        const mPercentY: number = e.offsetY / (e.target as HTMLElement).clientHeight;
-        const data: InputData = { type: InputTypes.mouseDown, x: mPercentX, y: mPercentY };
-        this.socket.emit(SocketEvents.serverData, JSON.stringify(data));
+        this.mouseDown = true
+        this.handleMouseMoved(e);
     }
 
     public handleMouseUp(e: MouseEvent) {
-        const mPercentX: number = e.offsetX / (e.target as HTMLElement).clientWidth;
-        const mPercentY: number = e.offsetY / (e.target as HTMLElement).clientHeight;
-        const data: InputData = { type: InputTypes.mouseUp, x: mPercentX, y: mPercentY };
-        this.socket.emit(SocketEvents.serverData, JSON.stringify(data));
+        this.mouseDown = false;
+        this.handleMouseMoved(e);
+    }
+
+    private handleTick(): void {
+        if (!this.mouseData) {
+            return;
+        }
+        this.socket.emit(SocketEvents.serverData, this.mouseData);
+        this.ticker = null;
     }
 
     public stopCapture(): void {
+        if (this.ticker) {
+            clearTimeout(this.ticker);
+        }
         const videoElem: HTMLVideoElement = document.getElementById("video") as HTMLVideoElement;
         videoElem.removeEventListener("mousemove", this.handleMouseMoved);
         videoElem.removeEventListener("mousedown", this.handleMouseDown);

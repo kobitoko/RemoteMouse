@@ -143,23 +143,12 @@ class Server {
     private serverData(data: string) {
         const inputData: InputData = JSON.parse(data);
         const screenSize = robot.getScreenSize();
-        switch(inputData.type) {
-            case InputTypes.mouseMove:
-                if (this.mouseIsDown) {
-                    robot.dragMouse(inputData.x * screenSize.width, inputData.y * screenSize.height);
-                } else {
-                    robot.moveMouse(inputData.x * screenSize.width, inputData.y * screenSize.height);
-                }
-                break;
-            case InputTypes.mouseDown:
-                robot.mouseToggle("down");
-                this.mouseIsDown = true;
-                break;
-            case InputTypes.mouseUp:
-                robot.mouseToggle("up");
-                this.mouseIsDown = false;
-                break;
-                
+        this.mouseIsDown = inputData.lMouseDown;
+        robot.mouseToggle(this.mouseIsDown ? "down" : "up");
+        if (this.mouseIsDown) {
+            robot.dragMouse(inputData.x * screenSize.width, inputData.y * screenSize.height);
+        } else {
+            robot.moveMouse(inputData.x * screenSize.width, inputData.y * screenSize.height);
         }
     }
 }
