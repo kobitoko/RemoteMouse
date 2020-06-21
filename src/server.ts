@@ -3,7 +3,7 @@ import http from "http";
 import socketIO from "socket.io";
 
 import app from "./app";
-import { SocketEvents, InputData, InputTypes } from './constants';
+import { SocketEvents, InputData } from "./constants";
 import robot from "robotjs";
 
 /**
@@ -11,29 +11,21 @@ import robot from "robotjs";
  */
 app.use(errorHandler());
 
-// TODO: Rewrite all this: 
-// CONNECT both via socket immediately, then when one clicks host, this will remember, but won't tell host to start rtc until it detects client
-// when one clicks client, server will remember and wait for a host.
-// When both present, this sends host to start rtc and begin communicating to client.
-// This will pass signals between host/client until they connect.
-
-    //TODO: figure out how to enable webrtc on local network https://stackoverflow.com/questions/32171367/webrtc-on-local-network
-
-
 class Server {
     public server: http.Server = null;
     public io: socketIO.Server = null;
     private host: socketIO.Socket = null;
     private client: socketIO.Socket = null;
     private connections: socketIO.Socket[] = [];
-    private mouseIsDown: boolean = false;
+    private hostScreenSize: {width: number; height: number} = null;
+    private lastCommand: InputData = null;
 
     constructor() {
         // Express and socketio will run on the same port. Http is the intermediary.
         this.server = new http.Server(app);
         this.io = socketIO(this.server);
         this.io.on(SocketEvents.connection, this.addSocketListeners.bind(this));
-        this.io.on(SocketEvents.error, (e:any) => console.error("Error:",e))
+        this.io.on(SocketEvents.error, (e: any) => console.error("Error:",e));
         // Start Express server.
         this.server.listen(app.get("port"), "0.0.0.0", () => {
             console.log(
@@ -64,23 +56,25 @@ class Server {
         if (this.client && this.host && [this.host.id, this.client.id].includes(socket.id)) {
             switch(socket.id) {
                 case this.host.id:
-                    console.log("Removed from host.")
+                    console.log("Removed from host.");
                     otherParty = this.client;
-                    who = "host"
+                    who = "host";
                     this.host = null;
                     break;
                 case this.client.id:
-                    console.log("Removed from client.")
+                    console.log("Removed from client.");
                     otherParty = this.host;
-                    who = "client"
+                    who = "client";
                     this.client = null;
                     break;
             }
         } else if (this.host && this.host.id === socket.id) {
-            console.log("Removed from host.")
+            console.log("Removed from host.");
             this.host = null;
+            this.lastCommand = null;
+            this.hostScreenSize = null;
         } else if (this.client && this.client.id === socket.id) {
-            console.log("Removed from client.")
+            console.log("Removed from client.");
             this.client = null;
         }
         const index: number = this.connections.findIndex(s => s.id === socket.id);
@@ -107,6 +101,7 @@ class Server {
             return;
         }
         this.host = socket;
+        this.hostScreenSize = robot.getScreenSize();
         console.log(`${socket.id} became host.`);
         this.clientHostCheck();
     }
@@ -141,14 +136,19 @@ class Server {
     }
 
     private serverData(data: string) {
-        const inputData: InputData = JSON.parse(data);
-        const screenSize = robot.getScreenSize();
-        this.mouseIsDown = inputData.lMouseDown;
-        robot.mouseToggle(this.mouseIsDown ? "down" : "up");
-        if (this.mouseIsDown) {
-            robot.dragMouse(inputData.x * screenSize.width, inputData.y * screenSize.height);
+        if (!data||!this.hostScreenSize) {
+            return;
+        }
+        const lastMouseToggled: boolean = this.lastCommand ? this.lastCommand.lMouseDown : false;
+        this.lastCommand = JSON.parse(data);
+        // Only toggle the mouse when it is needed.
+        if (this.lastCommand.lMouseDown != lastMouseToggled) {
+            robot.mouseToggle(this.lastCommand.lMouseDown ? "down" : "up");
+        }
+        if (this.lastCommand.lMouseDown) {
+            robot.dragMouse(this.lastCommand.x * this.hostScreenSize.width, this.lastCommand.y * this.hostScreenSize.height);
         } else {
-            robot.moveMouse(inputData.x * screenSize.width, inputData.y * screenSize.height);
+            robot.moveMouse(this.lastCommand.x * this.hostScreenSize.width, this.lastCommand.y * this.hostScreenSize.height);
         }
     }
 }

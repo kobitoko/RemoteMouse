@@ -20,16 +20,9 @@ export enum PeerEvents {
     data = "data"
 }
 
-export enum InputTypes {
-    mouseDown = "mouseDown",
-    mouseUp = "mouseUp",
-    mouseMove = "mouseMove"
-}
-
 export type InputData = {
-    type: InputTypes,
-    x: number,
-    y: number,
-    lMouseDown: boolean
-    data?: any
+    x: number;
+    y: number;
+    lMouseDown: boolean;
+    data?: any;
 }

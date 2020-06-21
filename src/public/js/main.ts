@@ -1,6 +1,6 @@
 import SocketIOClient from "socket.io-client";
 import SimplePeer from "simple-peer";
-import { SocketEvents, PeerEvents, InputData, InputTypes } from "../../constants";
+import { SocketEvents, PeerEvents, InputData } from "../../constants";
 
 type DisplayMediaOptions = {
     video: { cursor: string };
@@ -122,6 +122,7 @@ class RemoteMouse {
         this.addPeerListeners(this.peer);
         this.socket.on(SocketEvents.message, this.processSignal.bind(this));
         this.stopBtn.classList.remove("disabled");
+        this.stopBtn.style.setProperty("background-color", "red");
         this.hostBtn.classList.add("disabled");
         this.clientBtn.classList.add("disabled");
         console.log("Ready for peer.");
@@ -153,31 +154,40 @@ class RemoteMouse {
         }
         videoElem.srcObject = stream;
         await videoElem.play();
-        videoElem.addEventListener("mousemove", this.handleMouseMoved.bind(this));
-        videoElem.addEventListener("mousedown", this.handleMouseDown.bind(this));
-        videoElem.addEventListener("mouseup", this.handleMouseUp.bind(this));
+        videoElem.addEventListener("pointermove", this.handleMouseMoved.bind(this));
+        videoElem.addEventListener("pointerdown", this.handleMouseDown.bind(this));
+        videoElem.addEventListener("pointerup", this.handleMouseUp.bind(this));
+        videoElem.addEventListener("pointerout", this.handleMouseUp.bind(this));
         // Fullscreen the container, if the ratio doesn't fit the video's height, the video element's height still matches the video source
         document.getElementById("video-container").requestFullscreen();
     }
 
     public handleMouseMoved(e: MouseEvent) {
-        const newInput: InputData = {x: e.offsetX, y: e.offsetY, lMouseDown: this.mouseDown} as InputData;
-        if (this.lastMouseMove && this.lastMouseMove === newInput) {
-            return;
+        const offset: {x: number; y: number} = {x: e.offsetX, y: e.offsetY};
+        const newInput: InputData = {x: offset.x, y: offset.y, lMouseDown: this.mouseDown} as InputData;
+        let mouseDownTransition: boolean = false;
+        if (this.lastMouseMove) {
+            if (this.lastMouseMove === newInput) {
+                return;
+            }
+            mouseDownTransition =  this.mouseDown !== this.lastMouseMove.lMouseDown;
         }
         this.lastMouseMove = newInput;
-        const mPercentX: number = e.offsetX / (e.target as HTMLElement).clientWidth;
-        const mPercentY: number = e.offsetY / (e.target as HTMLElement).clientHeight;
-        const data: InputData = { type: InputTypes.mouseMove, x: mPercentX, y: mPercentY, lMouseDown: this.mouseDown };
+        const mPercentX: number = offset.x / (e.target as HTMLElement).clientWidth;
+        const mPercentY: number = offset.y / (e.target as HTMLElement).clientHeight;
+        const data: InputData = { x: mPercentX, y: mPercentY, lMouseDown: this.mouseDown };
         // We only care about the latest up-to-date data.
         this.mouseData = JSON.stringify(data);
-        if (!this.ticker) {
+        // Always update immediately when a button was just toggled
+        if (mouseDownTransition) {
+            this.handleTick();
+        } else if (!this.ticker) {
             this.ticker = setTimeout(this.handleTick.bind(this), this.tickRate);
         }
     }
 
     public handleMouseDown(e: MouseEvent) {
-        this.mouseDown = true
+        this.mouseDown = true;
         this.handleMouseMoved(e);
     }
 
@@ -199,9 +209,10 @@ class RemoteMouse {
             clearTimeout(this.ticker);
         }
         const videoElem: HTMLVideoElement = document.getElementById("video") as HTMLVideoElement;
-        videoElem.removeEventListener("mousemove", this.handleMouseMoved);
-        videoElem.removeEventListener("mousedown", this.handleMouseDown);
-        videoElem.removeEventListener("mouseup", this.handleMouseUp);
+        videoElem.removeEventListener("pointermove", this.handleMouseMoved);
+        videoElem.removeEventListener("pointerdown", this.handleMouseDown);
+        videoElem.removeEventListener("pointerup", this.handleMouseUp);
+        videoElem.removeEventListener("pointerout", this.handleMouseUp);
         this.role = Role.none;
         if (this.peer) {
             this.peer.destroy();

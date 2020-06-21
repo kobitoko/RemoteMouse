@@ -1,6 +1,21 @@
 # Remote Mouse Control
 
+Remote controls the mouse of the host computer from a client computer via browser.  
+Uses WebRTC to stream the screen.  
+Intended to be used within LAN only.  
 
+This is basically a remote desktop but with just the mouse.  
+The initial intention was to have a client move the mouse of the host and receive visual feedback.  
+
+It was planned to be used by my low-spec laptop with a touch screen so I could use it like a drawing tablet to draw with on painting software running on the host computer.  
+The mouse controls fast and works as expected, unfortunately the stream of the shared screen is behind by like a few seconds.
+
+Install dependencies: `npm install`  
+Building the server: `npm run build`  
+Running the server: `npm run start`  
+Running with hot-reload: `npm run watch`  
+
+Ontop of Node TypeScript starter, it uses: [RobotJS](https://github.com/octalmage/robotjs), [simple-peer](https://github.com/feross/simple-peer#readme), [socket.io](https://socket.io/), [browserify](https://github.com/browserify/browserify), [watchify](https://github.com/browserify/watchify)  
 
 Build ontop of TypeScript Node Starter taken from https://github.com/Microsoft/TypeScript-Node-Starter
 
